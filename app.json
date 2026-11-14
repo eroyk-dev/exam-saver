@@ -1,0 +1,57 @@
+{
+  "configVersion": "v2",
+  "app": {
+    "appType": "app",
+    "version": {
+      "code": 2,
+      "name": "1.1.0"
+    },
+    "appId": 1700731,
+    "appName": "ExameSaver",
+    "icon": "icon.png",
+    "vender": "examesaver",
+    "description": "Reader for text notes sent from phone (online / offline)"
+  },
+  "runtime": {
+    "apiVersion": {
+      "compatible": "1.0.0",
+      "target": "1.0.0",
+      "minVersion": "1.0.0"
+    }
+  },
+  "targets": {
+    "band-7": {
+      "module": {
+        "page": {
+          "pages": [
+            "page/index.page",
+            "page/reader.page",
+            "page/settings.page",
+            "page/images.page",
+            "page/viewer.page"
+          ]
+        },
+        "app-side": {
+          "path": "app-side/index"
+        },
+        "setting": {
+          "path": "setting/index"
+        }
+      },
+      "designWidth": 194,
+      "platforms": [
+        { "name": "band-7", "deviceSource": 252 },
+        { "name": "band-7-b", "deviceSource": 253 },
+        { "name": "band-7-c", "deviceSource": 254 }
+      ]
+    }
+  },
+  "permissions": [],
+  "i18n": {
+    "en-US": {
+      "name": "ExameSaver"
+    }
+  },
+  "defaultLanguage": "en-US",
+  "debug": false
+}
