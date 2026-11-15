@@ -5,11 +5,11 @@
 ## Состав проекта
 | Часть | Где | Что делает |
 |---|---|---|
-| Часы | `page/`, `utils/`, `app.js`, `assets/` | список заметок, читалка, размер шрифта, раздел «Фото», просмотр с плитками |
-| Телефон (Zepp) | `app-side/`, `setting/` | сервис связи с часами, страница настроек в Zepp: заметки для передачи, адрес и токен моста |
+| Часы | `watch/page/`, `watch/utils/`, `watch/app.js`, `watch/assets/` | список заметок, читалка, размер шрифта, раздел «Фото», просмотр с плитками |
+| Телефон (Zepp) | `watch/app-side/`, `watch/setting/` | сервис связи с часами, страница настроек в Zepp: заметки для передачи, адрес и токен моста |
 | Android‑приложение | `android/` | **ExameSaver Hub** (Rust + Jetpack Compose, Material 3, динамические цвета): мост галереи, заметки, настройки |
 | Мост для ПК/Termux | `tools/gallery_bridge.py` | то же самое на Python + Pillow, если Android‑приложение не нужно |
-| Общее | `shared/` | MessageBuilder, работа с файлами |
+| Общее | `watch/shared/` | MessageBuilder, работа с файлами |
 
 ## Возможности
 - **Заметки:** синхронизация с телефоном кнопкой, оффлайн‑чтение, удаление, размер шрифта. Лимит 30 файлов по 20 000 символов.
@@ -50,6 +50,7 @@ python3 tools/gallery_bridge.py --gallery http://ваш-сервер/gallery/ --
 ```
 npm i -g @zeppos/zeus-cli
 zeus login
+cd watch
 zeus dev            # симулятор
 zeus preview        # QR для часов
 zeus build          # .zab в dist/
