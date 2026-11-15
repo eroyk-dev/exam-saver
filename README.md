@@ -30,9 +30,9 @@
   ```
   rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
   cargo install cargo-ndk
-  cd android
-  cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o app/src/main/jniLibs build --release --manifest-path rust/Cargo.toml
-  gradle assembleDebug        # или открыть android/ в Android Studio
+  cd android/rust
+  cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ../app/src/main/jniLibs build --release
+  cd .. && gradle assembleDebug        # или открыть android/ в Android Studio
   ```
 - Тесты ядра (без Android): `cd android/rust && cargo test --release` — проверяют протокол моста, формат TGA, плитки, токен и заметки. Запуск без Android: `cargo run --release --example serve -- ./data`.
 - В Zepp → ExameSaver → настройки оставьте адрес `http://127.0.0.1:8765` (токен — как в Hub).
