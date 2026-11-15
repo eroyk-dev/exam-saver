@@ -7,7 +7,8 @@
 |---|---|---|
 | Часы | `page/`, `utils/`, `app.js`, `assets/` | список заметок, читалка, размер шрифта, раздел «Фото», просмотр с плитками |
 | Телефон (Zepp) | `app-side/`, `setting/` | сервис связи с часами, страница настроек в Zepp: заметки для передачи, адрес и токен моста |
-| Мост галереи | `tools/gallery_bridge.py` | Python + Pillow: читает галерею, сжимает под экран часов, отдаёт кусками base64 |
+| Android‑приложение | `android/` | **ExameSaver Hub** (Rust + Jetpack Compose, Material 3, динамические цвета): мост галереи, заметки, настройки |
+| Мост для ПК/Termux | `tools/gallery_bridge.py` | то же самое на Python + Pillow, если Android‑приложение не нужно |
 | Общее | `shared/` | MessageBuilder, работа с файлами |
 
 ## Возможности
@@ -21,7 +22,22 @@
 
 Мост отдаёт `/list`, `/meta`, `/chunk` (JSON), токен передаётся заголовком `X-Token`.
 
-## Запуск моста
+## Android‑приложение ExameSaver Hub (1.2.0)
+Телефонная сторона на Rust: фоновый HTTP‑мост на `127.0.0.1:8765` (протокол совместим с `gallery_bridge.py`), конвертация фото в формат часов, хранилище заметок. Интерфейс: Jetpack Compose, Material 3, цвета из обоев на Android 12+.
+- **Мост** — включатель, адрес и журнал запросов; **Заметки** — редактор (до 20 000 символов); **Фото** — предпросмотр галереи; **Настройки** — адреса галерей, папки телефона, токен, порт, доступ из Wi‑Fi, тема.
+- Часы получают заметки Hub при синхронизации вместе с заметками из настроек Zepp; фото — через раздел «Фото».
+- Сборка: GitHub Actions (`android/` → артефакт `ExameSaverHub-debug`) или локально:
+  ```
+  rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+  cargo install cargo-ndk
+  cd android
+  cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o app/src/main/jniLibs build --release --manifest-path rust/Cargo.toml
+  gradle assembleDebug        # или открыть android/ в Android Studio
+  ```
+- Тесты ядра (без Android): `cd android/rust && cargo test --release` — проверяют протокол моста, формат TGA, плитки, токен и заметки. Запуск без Android: `cargo run --release --example serve -- ./data`.
+- В Zepp → ExameSaver → настройки оставьте адрес `http://127.0.0.1:8765` (токен — как в Hub).
+
+## Запуск Python‑моста (альтернатива)
 ```
 pip install pillow
 python3 tools/gallery_bridge.py --gallery http://ваш-сервер/gallery/ --token секрет
@@ -46,6 +62,8 @@ zeus build          # .zab в dist/
 3. «...» справа сверху: размер шрифта, режим фото (серые/цветные), проверка показа.
 
 ## Что не проверено на устройстве
+- сборка и запуск Android‑приложения (сборка делается в Actions; на этапе разработки проверены только Rust‑ядро на хосте и сервис телефона в Node);
+- Zepp‑приложение должно разрешать HTTP‑запросы к 127.0.0.1 и работать, пока Hub запущен;
 - показ картинок из каталога данных приложения на API 1.0 (запасной вариант: экран «Проверка показа фото»);
 - HTTP без шифрования от приложения Zepp к мосту;
 - скорость передачи по Bluetooth (одно фото около 50–100 КБ).

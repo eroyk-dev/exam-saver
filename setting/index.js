@@ -79,7 +79,7 @@ AppSettingsPage({
       }),
       btn('Добавить', '#409EFF', addNote),
       Text({ paragraph: true, bold: true }, 'Галерея (мост)'),
-      Text({ paragraph: true }, 'Запустите tools/gallery_bridge.py (Termux или ПК) и укажите адрес. Для ПК в одной Wi‑Fi сети: http://<IP-ПК>:8765'),
+      Text({ paragraph: true }, 'Запустите приложение ExameSaver Hub (Android) или tools/gallery_bridge.py. Адрес по умолчанию http://127.0.0.1:8765. Заметки из Hub появятся на часах после синхронизации.'),
       TextInput({
         label: 'Адрес моста',
         value: st.getItem('brUrl') || 'http://127.0.0.1:8765',

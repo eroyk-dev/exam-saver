@@ -16,7 +16,7 @@ function pack(n) {
   return { id: n.id, title: n.title, text: String(n.text || '').slice(0, MAX_CHARS) }
 }
 
-const IMG_PATH = { IMG_LIST: '/list', IMG_META: '/meta', IMG_CHUNK: '/chunk' }
+const IMG_PATH = { IMG_LIST: '/list', IMG_META: '/meta', IMG_CHUNK: '/chunk', HUB_NOTES: '/notes', HUB_NOTE: '/note' }
 
 // Тонкий прокси к мосту галереи: часы шлют параметры, телефон ходит по HTTP и возвращает JSON
 async function bridge(method, params) {
@@ -60,19 +60,20 @@ AppSideService({
       if (IMG_PATH[payload.method]) {
         bridge(payload.method, payload.params).then((r) => ctx.response({ data: { result: r } }))
       } else if (payload.method === 'LIST') {
-        ctx.response({
-          data: {
-            result: getNotes().map((n) => ({
-              id: n.id,
-              title: n.title,
-              len: String(n.text || '').length
-            }))
-          }
+        // Заметки из приложения ExameSaver Hub (если оно запущено) + заметки из настроек Zepp
+        // не ждём мост дольше 2 с: часы проверяют связь с коротким таймаутом
+        Promise.race([bridge('HUB_NOTES', {}), new Promise((r) => setTimeout(() => r(null), 2000))]).then((hub) => {
+          const local = getNotes().map((n) => ({ id: n.id, title: n.title, len: String(n.text || '').length }))
+          const have = {}
+          local.forEach((n) => (have[n.id] = 1))
+          const fromHub = hub && hub.ok ? hub.items.filter((n) => !have[n.id]) : []
+          ctx.response({ data: { result: fromHub.concat(local) } })
         })
       } else if (payload.method === 'GET') {
         const id = (payload.params || {}).id
         const note = getNotes().find((n) => n.id === id)
-        ctx.response({ data: { result: note ? pack(note) : null } })
+        if (note) return ctx.response({ data: { result: pack(note) } })
+        bridge('HUB_NOTE', { id }).then((r) => ctx.response({ data: { result: r && r.ok ? pack(r.note) : null } }))
       } else {
         ctx.response({ data: { result: null } })
       }
