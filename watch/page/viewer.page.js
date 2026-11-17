@@ -26,7 +26,7 @@ Page({
     const file = tileFile(s.id, s.t)
     const st = getCfg().ip || 0
     s.img = hmUI.createWidget(hmUI.widget.IMG, { x: 0, y: 0, src: srcFor(file, st) })
-    const label = (s.n > 1 ? s.t + 1 + '/' + s.n + '  ' : '') + (s.id === 'test' ? 'путь ' + (st % PATHS.length + 1) : '')
+    const label = (s.n > 1 ? s.t + 1 + '/' + s.n + '  ' : '') + 'путь ' + ((st % PATHS.length) + 1)
     s.info = label
       ? text({ x: 0, y: H - 24, w: W, h: 22, text: label, text_size: 14, color: C.amber, text_style: hmUI.text_style.NONE })
       : null

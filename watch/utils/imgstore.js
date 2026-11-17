@@ -4,13 +4,25 @@ import { getCfg } from './store'
 export const MAX_IMGS = 12
 const INDEX = 'es_img.json'
 
-// Как путь к файлу из каталога данных превратить в src для IMG на API 1.0 — на разных
-// прошивках по-разному, поэтому вариантов несколько; рабочий выбирается на экране «Проверка показа»
-export const PATHS = ['%', 'data://%', '/storage/js_apps/data/%', 'storage/js_apps/data/%']
-
-function cid(id) {
-  return String(id).replace(/[^0-9a-zA-Z]/g, '')
+// Как путь к файлу из каталога данных превратить в src для IMG на API 1.0 — документация молчит,
+// поэтому способов несколько; рабочий выбирается на экране «Проверка показа» (там видны все сразу).
+function aid() {
+  let id = 0
+  try {
+    id = hmApp.packageInfo().appId
+  } catch (e) {}
+  return { dec: String(id), hu: ('00000000' + id.toString(16)).slice(-8).toUpperCase(), hl: ('00000000' + id.toString(16)).slice(-8) }
 }
+export const PATHS = [
+  (f) => f,
+  (f) => 'data://' + f,
+  (f) => '/data/' + f,
+  (f) => '/storage/js_apps/data/' + aid().hu + '/' + f,
+  (f) => '/storage/js_apps/data/' + aid().hl + '/' + f,
+  (f) => '/storage/js_apps/data/' + aid().dec + '/' + f,
+  (f) => '/storage/js_apps/' + aid().hu + '/data/' + f,
+  (f) => '../data/' + f
+]
 
 export function tileFile(id, t) {
   return 'es_i' + cid(id) + '_' + t + '.png'
@@ -18,15 +30,7 @@ export function tileFile(id, t) {
 
 export function srcFor(file, style) {
   const st = style == null ? getCfg().ip || 0 : style
-  const p = PATHS[st % PATHS.length]
-  if (p.indexOf('/storage') === 0 || p.indexOf('storage') === 0) {
-    let aid = ''
-    try {
-      aid = ('00000000' + hmApp.packageInfo().appId.toString(16)).slice(-8).toUpperCase()
-    } catch (e) {}
-    return p.replace('%', aid + '/' + file)
-  }
-  return p.replace('%', file)
+  return PATHS[st % PATHS.length](file)
 }
 
 export function loadImgs() {
@@ -90,10 +94,10 @@ export function deleteImg(id) {
   saveImgs(list.filter((x) => x.id !== c))
 }
 
-// Тестовая картинка 96×96 RGB565 (градиент) в том же формате, что присылает мост
+// Тестовая картинка 48×48 RGB565 (градиент) в том же формате, что присылает мост
 export function writeTestImage() {
-  const w = 96
-  const h = 96
+  const w = 48
+  const h = 48
   const hdr = 18 + 46
   const buf = new Uint8Array(hdr + w * h * 2)
   buf[0] = 46
@@ -124,4 +128,27 @@ export function writeTestImage() {
   const h0 = openTile('test', 0)
   appendTile(h0, buf)
   closeTile(h0)
+}
+
+// Копия значка из ресурсов приложения в каталог данных: формат заведомо «правильный», так что
+// если копия не видна, виноват путь, а не формат наших файлов. Возвращает строку со статусом.
+export function copyAssetProbe(asset) {
+  try {
+    const [st, err] = hmFS.stat_asset(asset)
+    if (err !== 0 && err !== undefined) return 'ресурс: err ' + err
+    const buf = new Uint8Array(st.size)
+    const fd = hmFS.open_asset(asset, hmFS.O_RDONLY)
+    hmFS.read_asset(fd, buf.buffer, 0, st.size)
+    try {
+      hmFS.close_asset(fd)
+    } catch (e) {
+      hmFS.close(fd)
+    }
+    const h = openTile('probe', 0)
+    appendTile(h, buf)
+    closeTile(h)
+    return st.size + ' Б'
+  } catch (e) {
+    return 'ошибка: ' + String((e && e.message) || e).slice(0, 30)
+  }
 }

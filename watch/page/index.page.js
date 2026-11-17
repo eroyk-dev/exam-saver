@@ -1,6 +1,6 @@
 import { loadImgs } from '../utils/imgstore'
-import { loadIndex, deleteNote, saveNote, MAX_NOTES } from '../utils/store'
-import { gdata, bleConnected, request } from '../utils/link'
+import { loadIndex, deleteNote, saveNote, getCfg, MAX_NOTES } from '../utils/store'
+import { gdata, request } from '../utils/link'
 import { W, H, M, TOP_PAD, BOT_PAD, C, ICON, button, text, rect, remove, iconButton } from '../utils/ui'
 
 // Вёрстка (внутри безопасных полей: системная строка сверху, скруглённые углы)
@@ -54,24 +54,29 @@ Page({
     gdata().onSaved = null
   },
 
-  // Индикатор «в сети / не в сети»
+  // Индикатор: зелёный — Zepp на телефоне отвечает и (если нужен) Hub тоже; жёлтый — причина в строке состояния.
+  // Всегда пробуем запрос, а не верим статусу Bluetooth: он бывает неточным.
   checkLink() {
     const s = this.state
     if (s.busy) return
     s.link = 'probe'
     this.render()
-    if (!bleConnected()) {
-      s.link = 'off'
-      this.render()
-      return
-    }
-    request('LIST', {}, 3000)
-      .then(() => {
-        s.link = 'on'
+    const src = getCfg().nsrc || 0
+    request('PING', { src }, 4000)
+      .then((res) => {
+        const r = res && res.result
+        if (r && r.zepp && src !== 2 && r.hub === false) {
+          s.link = 'off'
+          this.setCap('Zepp есть, Hub не отвечает', C.amber)
+        } else {
+          s.link = 'on'
+          this.setCap('Файлов: ' + s.items.length, C.dim)
+        }
         this.render()
       })
       .catch(() => {
         s.link = 'off'
+        this.setCap('Нет связи с Zepp на телефоне', C.amber)
         this.render()
       })
   },
@@ -83,14 +88,21 @@ Page({
     s.busy = true
     s.del = false
     this.setCap('Синхронизация…', C.dim)
+    const src = getCfg().nsrc || 0
 
-    request('LIST', {}, 5000)
+    request('LIST', { src }, 6000)
       .then((res) => {
         s.link = 'on'
-        const list = ((res && res.result) || []).slice(0, MAX_NOTES)
+        const r = res && res.result
+        const all = Array.isArray(r) ? r : (r && r.items) || []
+        const hubDown = !!r && !Array.isArray(r) && r.hub === false
+        const list = all.slice(0, MAX_NOTES)
         if (!list.length) {
           s.busy = false
-          this.setCap('Телефон: нет файлов', C.amber)
+          if (hubDown) {
+            s.link = 'off'
+            this.setCap('Zepp есть, Hub не отвечает', C.amber)
+          } else this.setCap(src === 1 ? 'Hub: нет заметок' : 'Телефон: нет файлов', C.amber)
           this.render()
           return
         }
@@ -103,7 +115,7 @@ Page({
             (p, it, i) =>
               p.then(() => {
                 this.setCap('Загрузка ' + (i + 1) + ' из ' + list.length, C.dim)
-                return request('GET', { id: it.id }, 8000)
+                return request('GET', { id: it.id, src }, 8000)
                   .then((r) => {
                     if (r && r.result && r.result.text && saveNote(r.result)) ok++
                   })
@@ -114,14 +126,14 @@ Page({
           .then(() => {
             s.busy = false
             s.items = loadIndex()
-            this.setCap('Готово: ' + ok + ' из ' + list.length, ok ? C.green : C.red)
+            this.setCap('Готово: ' + ok + ' из ' + list.length + (hubDown ? ' (Hub не отвечает)' : ''), ok ? C.green : C.red)
             this.render()
           })
       })
       .catch(() => {
         s.busy = false
         s.link = 'off'
-        this.setCap('Ошибка: нет связи', C.red)
+        this.setCap('Нет связи с Zepp на телефоне', C.red)
         this.render()
       })
   },

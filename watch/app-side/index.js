@@ -40,6 +40,11 @@ async function bridge(method, params) {
   }
 }
 
+// Вызов Hub, но не дольше 2 с: часы проверяют связь с коротким таймаутом
+function hubCall(method, params) {
+  return Promise.race([bridge(method, params), new Promise((r) => setTimeout(() => r({ ok: false, err: 'Hub не отвечает' }), 2000))])
+}
+
 AppSideService({
   onInit() {
     messageBuilder.listen(() => {})
@@ -59,21 +64,28 @@ AppSideService({
       const payload = messageBuilder.buf2Json(ctx.request.payload)
       if (IMG_PATH[payload.method]) {
         bridge(payload.method, payload.params).then((r) => ctx.response({ data: { result: r } }))
+      } else if (payload.method === 'PING') {
+        // Проверка цепочки часы → Zepp → Hub: сюда дошли, значит Zepp на телефоне жив
+        const src = (payload.params || {}).src || 0
+        if (src === 2) return ctx.response({ data: { result: { zepp: true, hub: null } } })
+        hubCall('HUB_NOTES', {}).then((hub) => ctx.response({ data: { result: { zepp: true, hub: !!(hub && hub.ok), err: hub && hub.err } } }))
       } else if (payload.method === 'LIST') {
-        // Заметки из приложения ExameSaver Hub (если оно запущено) + заметки из настроек Zepp
-        // не ждём мост дольше 2 с: часы проверяют связь с коротким таймаутом
-        Promise.race([bridge('HUB_NOTES', {}), new Promise((r) => setTimeout(() => r(null), 2000))]).then((hub) => {
-          const local = getNotes().map((n) => ({ id: n.id, title: n.title, len: String(n.text || '').length }))
+        // src: 0 — Zepp + Hub, 1 — только Hub, 2 — только Zepp
+        const src = (payload.params || {}).src || 0
+        const local = src === 1 ? [] : getNotes().map((n) => ({ id: n.id, title: n.title, len: String(n.text || '').length }))
+        if (src === 2) return ctx.response({ data: { result: { items: local, hub: null } } })
+        hubCall('HUB_NOTES', {}).then((hub) => {
           const have = {}
           local.forEach((n) => (have[n.id] = 1))
           const fromHub = hub && hub.ok ? hub.items.filter((n) => !have[n.id]) : []
-          ctx.response({ data: { result: fromHub.concat(local) } })
+          ctx.response({ data: { result: { items: fromHub.concat(local), hub: !!(hub && hub.ok), err: hub && hub.err } } })
         })
       } else if (payload.method === 'GET') {
         const id = (payload.params || {}).id
-        const note = getNotes().find((n) => n.id === id)
-        if (note) return ctx.response({ data: { result: pack(note) } })
-        bridge('HUB_NOTE', { id }).then((r) => ctx.response({ data: { result: r && r.ok ? pack(r.note) : null } }))
+        const src = (payload.params || {}).src || 0
+        const note = src === 1 ? null : getNotes().find((n) => n.id === id)
+        if (note || src === 2) return ctx.response({ data: { result: note ? pack(note) : null } })
+        hubCall('HUB_NOTE', { id }).then((r) => ctx.response({ data: { result: r && r.ok ? pack(r.note) : null } }))
       } else {
         ctx.response({ data: { result: null } })
       }

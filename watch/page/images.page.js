@@ -1,4 +1,4 @@
-import { request, bleConnected } from '../utils/link'
+import { request } from '../utils/link'
 import { b64decode } from '../utils/b64'
 import { getCfg } from '../utils/store'
 import { loadImgs, deleteImg, commitImg, openTile, appendTile, closeTile, tileSize, MAX_IMGS } from '../utils/imgstore'
@@ -87,7 +87,6 @@ Page({
   sync() {
     const s = this.state
     if (s.busy) return
-    if (!bleConnected()) return this.setCap('Нет связи с телефоном', C.red)
     s.busy = true
     s.del = false
     const mode = getCfg().color ? 'color' : 'gray'
@@ -120,7 +119,10 @@ Page({
           )
           .then(() => this.setCap(fail && !ok ? fail : 'Готово: ' + ok + ' из ' + todo.length, ok ? C.green : C.red))
       })
-      .catch((e) => this.setCap(String((e && e.message) || 'нет связи').slice(0, 40), C.red))
+      .catch((e) => {
+        const m = String((e && e.message) || '')
+        this.setCap(!m || /time|Timed/i.test(m) ? 'Нет связи с Zepp на телефоне' : m.slice(0, 40), C.red)
+      })
       .then(() => {
         s.busy = false
         s.items = loadImgs()

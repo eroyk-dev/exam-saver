@@ -60,7 +60,7 @@ export function deleteNote(id) {
 
 // Настройки: font — размер шрифта, first — был ли успешный первый онлайн-запуск
 export function getCfg() {
-  return Object.assign({ font: 22, first: 0 }, safeParse(readFileSync(CFG_FILE), {}))
+  return Object.assign({ font: 22, first: 0, nsrc: 0, ip: 0, color: 0 }, safeParse(readFileSync(CFG_FILE), {}))
 }
 
 export function setCfg(patch) {
